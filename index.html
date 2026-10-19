@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Học Crazy English</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 20px 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        h1 { text-align: center; color: #2c3e50; }
+        
+        /* Menu Tab */
+        .tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { padding: 10px 20px; border: none; background: #ddd; cursor: pointer; border-radius: 6px; font-size: 16px; font-weight: bold; }
+        .tab-btn.active { background: #3498db; color: white; }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Học Tập */
+        select { width: 100%; padding: 12px; font-size: 16px; border: 2px solid #3498db; border-radius: 8px; margin-bottom: 20px; }
+        .lesson-header { background: #e8f4f8; padding: 15px; border-left: 5px solid #3498db; margin-bottom: 15px; border-radius: 6px; }
+        .lesson-header h2 { margin: 0 0 5px 0; color: #2980b9; }
+        .lesson-header p { margin: 0; font-style: italic; color: #555; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #34495e; color: white; }
+        .lego-col { color: #d35400; font-weight: bold; }
+        .full-sentence { color: #27ae60; font-weight: 500; }
+
+        /* Nạp Dữ Liệu */
+        .admin-form input, .admin-form textarea { width: 100%; padding: 10px; margin-top: 5px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; font-size: 15px; box-sizing: border-box; }
+        .btn-save { background: #27ae60; color: white; padding: 12px 20px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; }
+        .btn-save:hover { background: #2ecc71; }
+        .btn-danger { background: #e74c3c; color: white; padding: 8px 15px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; margin-top: 20px;}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Khóa Học 150 Cấu Trúc Crazy English</h1>
+    
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('learnTab')">📚 Góc Học Tập</button>
+        <button class="tab-btn" onclick="switchTab('adminTab')">⚙️ Nạp Bài Mới</button>
+    </div>
+
+    <!-- TAB 1: GÓC HỌC TẬP -->
+    <div id="learnTab" class="tab-content active">
+        <select id="lessonSelect" onchange="displayLesson()"></select>
+        <div id="learningArea">
+            <div class="lesson-header">
+                <h2 id="lessonTitle">Chọn một bài học để bắt đầu</h2>
+                <p id="lessonMeaning">...</p>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th width="5%">STT</th>
+                        <th width="25%">Cụm Ghép (Lego)</th>
+                        <th width="30%">Nghĩa của cụm ghép</th>
+                        <th width="40%">Câu hoàn chỉnh</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB 2: NẠP DỮ LIỆU -->
+    <div id="adminTab" class="tab-content admin-form">
+        <div class="lesson-header" style="background: #fdf3e7; border-left-color: #f39c12;">
+            <h3 style="margin-top:0;">Hướng dẫn nạp nhanh:</h3>
+            <p>1. Nhập Khung chính và Nghĩa.<br>2. Ở mục dữ liệu: Chỉ cần <b>Copy nguyên cái bảng</b> Gemini chat rồi <b>Paste</b> thẳng vào ô là xong!</p>
+        </div>
+
+        <label><b>Khung câu (VD: 5. I would like to...)</b></label>
+        <input type="text" id="inputPattern" placeholder="Nhập khung câu...">
+
+        <label><b>Nghĩa của khung câu</b></label>
+        <input type="text" id="inputMeaning" placeholder="(Nghĩa là: ...)">
+
+        <label><b>Paste Bảng Dữ Liệu 20 Cụm vào đây:</b></label>
+        <textarea id="inputTextarea" rows="8" placeholder="Paste bảng từ Gemini hoặc Excel vào đây..."></textarea>
+
+        <button class="btn-save" onclick="saveNewLesson()">💾 LƯU BÀI HỌC VĨNH VIỄN</button>
+        
+        <hr style="margin-top: 30px; border-top: 1px dashed #ccc;">
+        <button class="btn-danger" onclick="clearAllData()">⚠️ Xóa toàn bộ dữ liệu làm lại</button>
+    </div>
+</div>
+
+<script>
+    let database = [];
+
+    // 1. Tải dữ liệu từ LocalStorage (Bộ nhớ trình duyệt)
+    function loadData() {
+        const savedData = localStorage.getItem('crazy_english_db');
+        if (savedData) {
+            database = JSON.parse(savedData);
+        } else {
+            // Dữ liệu mồi nếu chưa có gì
+            database = [{
+                pattern: "1. I need to + ...",
+                meaning: "(Nghĩa là: Tôi cần phải... - Dùng để diễn tả một việc bạn bắt buộc phải làm ngay)",
+                legos: [
+                    { en: "learn English every day", vi: "học tiếng Anh mỗi ngày", full: "I need to learn English every day." }
+                ]
+            }];
+            saveToStorage();
+        }
+        updateDropdown();
+    }
+
+    // 2. Chuyển Tab
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        event.target.classList.add('active');
+    }
+
+    // 3. Cập nhật Dropdown
+    function updateDropdown() {
+        const select = document.getElementById("lessonSelect");
+        select.innerHTML = "";
+        database.forEach((lesson, index) => {
+            let option = document.createElement("option");
+            option.value = index;
+            option.text = lesson.pattern;
+            select.appendChild(option);
+        });
+        if(database.length > 0) displayLesson();
+    }
+
+    // 4. Hiển thị bài học
+    function displayLesson() {
+        const index = document.getElementById("lessonSelect").value;
+        if(index === "") return;
+        const lesson = database[index];
+        document.getElementById("lessonTitle").innerText = lesson.pattern;
+        document.getElementById("lessonMeaning").innerText = lesson.meaning;
+
+        const tbody = document.getElementById("tableBody");
+        tbody.innerHTML = "";
+        lesson.legos.forEach((lego, i) => {
+            let tr = `<tr>
+                <td>${i + 1}</td>
+                <td class="lego-col">${lego.en}</td>
+                <td>${lego.vi}</td>
+                <td class="full-sentence">${lego.full}</td>
+            </tr>`;
+            tbody.innerHTML += tr;
+        });
+    }
+
+    // 5. Tính năng NẠP DỮ LIỆU THÔNG MINH
+    function saveNewLesson() {
+        const pattern = document.getElementById("inputPattern").value.trim();
+        const meaning = document.getElementById("inputMeaning").value.trim();
+        const rawText = document.getElementById("inputTextarea").value.trim();
+
+        if (!pattern || !rawText) {
+            alert("Vui lòng điền tên Khung câu và Paste dữ liệu!");
+            return;
+        }
+
+        let legos = [];
+        let rows = rawText.split('\n');
+
+        // BỘ GIẢI MÃ THÔNG MINH (Đọc được cả bảng Markdown của ChatGPT/Gemini và Excel)
+        rows.forEach(row => {
+            let cleanRow = row.replace(/^\|/, '').replace(/\|$/, '').trim();
+            if (!cleanRow || cleanRow.includes('---') || cleanRow.includes('STT')) return; 
+
+            let cols = cleanRow.includes('|') ? cleanRow.split('|') : cleanRow.split('\t');
+            cols = cols.map(c => c.trim());
+
+            if (cols.length >= 3) {
+                if (cols.length >= 4) { // Có STT
+                    legos.push({ en: cols[1], vi: cols[2], full: cols[3] });
+                } else { // Không có STT
+                    legos.push({ en: cols[0], vi: cols[1], full: cols[2] });
+                }
+            }
+        });
+
+        if(legos.length === 0) {
+            alert("Không nhận diện được dữ liệu bảng. Hãy copy toàn bộ bảng ở khung chat dán vào!");
+            return;
+        }
+
+        // Đẩy vào database và lưu
+        database.push({ pattern: pattern, meaning: meaning, legos: legos });
+        saveToStorage();
+
+        alert(`Đã lưu thành công bài: ${pattern} với ${legos.length} cụm từ!`);
+        
+        // Reset form
+        document.getElementById("inputPattern").value = "";
+        document.getElementById("inputMeaning").value = "";
+        document.getElementById("inputTextarea").value = "";
+        
+        updateDropdown();
+        document.getElementById("lessonSelect").value = database.length - 1; // Chọn bài vừa thêm
+        switchTab('learnTab'); // Chuyển về màn học tập
+    }
+
+    // Lưu vào bộ nhớ máy
+    function saveToStorage() {
+        localStorage.setItem('crazy_english_db', JSON.stringify(database));
+    }
+
+    // Xóa tất cả
+    function clearAllData() {
+        if(confirm("Bạn có chắc chắn muốn xóa toàn bộ 150 bài đã lưu? Hành động này không thể hoàn tác!")) {
+            localStorage.removeItem('crazy_english_db');
+            location.reload();
+        }
+    }
+
+    // Chạy khi load trang
+    window.onload = loadData;
+</script>
+
+</body>
+</html>
